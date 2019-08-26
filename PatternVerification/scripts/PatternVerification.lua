@@ -32,7 +32,6 @@ local verifiers = {}
 
 -- Creating viewer
 local viewer = View.create()
-viewer:setID('viewer2D')
 
 -- Setting up graphical overlay attributes
 local teachDecoration = View.ShapeDecoration.create()
@@ -48,10 +47,12 @@ passDecoration:setLineColor(0, 230, 0) -- Green for "pass"
 passDecoration:setLineWidth(4)
 
 local textDecoration = View.TextDecoration.create()
-textDecoration:setPosition(25, 25)
+textDecoration:setPosition(25, 45)
 textDecoration:setSize(35)
+textDecoration:setColor(255, 255, 0)
 
--- Creating matcher
+-- Create a PatternMatcher instance and set parameters
+-- Note that a PointMatcher possibly can be used as well here
 local matcher = Image.Matching.PatternMatcher.create()
 matcher:setRotationRange(3.1415 / 4)
 matcher:setMaxMatches(5)
@@ -84,15 +85,15 @@ local function teachShape(img, imageID)
 end
 
 -- Routine for adding and teaching one verifier
---@addVerifier(verifiers:table, fixture:Image.Fixture, teachImage:Image, keyName:string, keyRegion:Image.PixelRegion)
-local function addVerifier(verifiers, fixture, teachImage, keyName, keyRegion) --luacheck: ignore
+--@addVerifier(verifiers:table, fixture:Image.Fixture, teachImage:Image,
+--             keyName:string, keyRegion:Image.PixelRegion)
+local function addVerifier(teachImage, keyName, keyRegion)
   verifiers[keyName] = Image.Matching.PatternVerifier.create()
   verifiers[keyName]:setPositionTolerance(3)
   verifiers[keyName]:setRotationTolerance(math.rad(1))
   local keyPose = verifiers[keyName]:teach(teachImage, keyRegion)
   fixture:appendPose(keyName, keyPose)
   fixture:appendShape(keyName, keyRegion:getBoundingBoxOriented(teachImage))
-  return verifiers, fixture
 end
 
 --@teachPatterns(teachPose:Transform, img:Image, imageID:string)
@@ -109,15 +110,15 @@ local function teachPatterns(teachPose, img, imageID)
   local pageDown = Image.PixelRegion.createRectangle(308, 212, 336, 246)
 
   -- Teaching verifiers for keys
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'PrintScreen', printScreen)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'ScrollLock', scrollLock)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'Pause', pause)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'Insert', insert)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'Home', home)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'PageUp', pageUp)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'Delete', delete)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'End', endButton)
-  verifiers, fixture = addVerifier(verifiers, fixture, img, 'PageDown', pageDown)
+  addVerifier(img, 'PrintScreen', printScreen)
+  addVerifier(img, 'ScrollLock', scrollLock)
+  addVerifier(img, 'Pause', pause)
+  addVerifier(img, 'Insert', insert)
+  addVerifier(img, 'Home', home)
+  addVerifier(img, 'PageUp', pageUp)
+  addVerifier(img, 'Delete', delete)
+  addVerifier(img, 'End', endButton)
+  addVerifier(img, 'PageDown', pageDown)
   -- Draw teach regions
   fixture:transform(teachPose)
   for keyName, _ in pairs(verifiers) do
@@ -126,6 +127,7 @@ local function teachPatterns(teachPose, img, imageID)
   end
 
   viewer:addText('Teach', textDecoration, nil, imageID)
+
   viewer:present()
 end
 
@@ -146,6 +148,7 @@ local function match(img)
   viewer:addShape(objectRectangle, passDecoration, nil, imageID)
 
   -- Verifying each key, draw box with color depending on verifier score
+  local textContent = 'Pass'
   for keyName, verifier in pairs(verifiers) do
     local score, _, _ = verifier:verify(img, fixture:getPose(keyName))
     local bbox = fixture:getShape(keyName)
@@ -153,11 +156,12 @@ local function match(img)
       viewer:addShape(bbox, passDecoration, nil, imageID)
     else
       viewer:addShape(bbox, failDecoration, nil, imageID)
+      textContent = 'Fail'
     end
     print(keyName .. ' score: ' .. tostring(math.floor(score * 100) / 100))
   end
 
-  viewer:addText('Verify', textDecoration, nil, imageID)
+  viewer:addText(textContent, textDecoration, nil, imageID)
   viewer:present()
 end
 
