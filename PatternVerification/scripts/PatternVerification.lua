@@ -31,7 +31,7 @@ local DELAY = 1000 -- ms between visualization steps for demonstration purpose
 local verifiers = {}
 
 -- Creating viewer
-local viewer = View.create()
+local viewer = View.create('viewer2D1')
 
 -- Setting up graphical overlay attributes
 local teachDecoration = View.ShapeDecoration.create()
