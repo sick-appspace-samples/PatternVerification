@@ -9,25 +9,20 @@ local DELAY = 1000 -- ms between visualization steps for demonstration purpose
 local verifiers = {}
 
 -- Creating viewer
-local viewer = View.create('viewer2D1')
+local viewer = View.create()
 
 -- Setting up graphical overlay attributes
 local teachDecoration = View.ShapeDecoration.create()
-teachDecoration:setLineColor(0, 0, 230) -- Blue for "teach"
-teachDecoration:setLineWidth(4)
+teachDecoration:setLineWidth(4):setLineColor(0, 0, 230) -- Blue for "teach"
 
 local failDecoration = View.ShapeDecoration.create()
-failDecoration:setLineColor(230, 0, 0) -- Red for "fail"
-failDecoration:setLineWidth(4)
+failDecoration:setLineWidth(4):setLineColor(230, 0, 0) -- Red for "fail"
 
 local passDecoration = View.ShapeDecoration.create()
-passDecoration:setLineColor(0, 230, 0) -- Green for "pass"
-passDecoration:setLineWidth(4)
+passDecoration:setLineWidth(4):setLineColor(0, 230, 0) -- Green for "pass"
 
-local textDecoration = View.TextDecoration.create()
-textDecoration:setPosition(25, 45)
-textDecoration:setSize(35)
-textDecoration:setColor(255, 255, 0)
+local textDecoration = View.TextDecoration.create():setPosition(25, 45)
+textDecoration:setSize(35):setColor(255, 255, 0)
 
 -- Create a PatternMatcher instance and set parameters
 -- Note that a PointMatcher possibly can be used as well here
@@ -47,13 +42,14 @@ local errorScoreThreshold = 0.85
 
 --Start of Function and Event Scope---------------------------------------------
 
---@teachShape(img:Image, imageID:string):Transform
-local function teachShape(img, imageID)
+---@param img Image
+---@return Transform
+local function teachShape(img)
   -- Defining object teach region
   local center = Point.create(280, 180)
   local teachRectangle = Shape.createRectangle(center, 170, 200)
   local teachRegion = teachRectangle:toPixelRegion(img)
-  viewer:addShape(teachRectangle, teachDecoration, nil, imageID)
+  viewer:addShape(teachRectangle, teachDecoration)
 
   -- Teaching
   local matcherTeachPose = matcher:teach(img, teachRegion)
@@ -62,9 +58,10 @@ local function teachShape(img, imageID)
   return matcherTeachPose
 end
 
--- Routine for adding and teaching one verifier
---@addVerifier(verifiers:table, fixture:Image.Fixture, teachImage:Image,
---             keyName:string, keyRegion:Image.PixelRegion)
+--- Routine for adding and teaching one verifier
+---@param teachImage Image
+---@param keyName string
+---@param keyRegion Image.PixelRegion
 local function addVerifier(teachImage, keyName, keyRegion)
   verifiers[keyName] = Image.Matching.PatternVerifier.create()
   verifiers[keyName]:setPositionTolerance(3)
@@ -74,8 +71,9 @@ local function addVerifier(teachImage, keyName, keyRegion)
   fixture:appendShape(keyName, keyRegion:getBoundingBoxOriented(teachImage))
 end
 
---@teachPatterns(teachPose:Transform, img:Image, imageID:string)
-local function teachPatterns(teachPose, img, imageID)
+---@param teachPose Transform
+---@param img Image
+local function teachPatterns(teachPose, img)
   -- Key regions
   local printScreen = Image.PixelRegion.createRectangle(220, 103, 249, 137)
   local scrollLock = Image.PixelRegion.createRectangle(265, 103, 294, 139)
@@ -101,18 +99,18 @@ local function teachPatterns(teachPose, img, imageID)
   fixture:transform(teachPose)
   for keyName, _ in pairs(verifiers) do
     local bbox = fixture:getShape(keyName)
-    viewer:addShape(bbox, teachDecoration, nil, imageID)
+    viewer:addShape(bbox, teachDecoration)
   end
 
-  viewer:addText('Teach', textDecoration, nil, imageID)
+  viewer:addText('Teach', textDecoration)
 
   viewer:present()
 end
 
---@match(img:Image)
+---@param img Image
 local function match(img)
   viewer:clear()
-  local imageID = viewer:addImage(img)
+  viewer:addImage(img)
   -- Finding object
   local poses,
     scores = matcher:match(img)
@@ -123,7 +121,7 @@ local function match(img)
   -- Drawing object rectangle
   fixture:transform(livePose)
   local objectRectangle = fixture:getShape('objectBox')
-  viewer:addShape(objectRectangle, passDecoration, nil, imageID)
+  viewer:addShape(objectRectangle, passDecoration)
 
   -- Verifying each key, draw box with color depending on verifier score
   local textContent = 'Pass'
@@ -131,15 +129,15 @@ local function match(img)
     local score, _, _ = verifier:verify(img, fixture:getPose(keyName))
     local bbox = fixture:getShape(keyName)
     if (score > errorScoreThreshold) then
-      viewer:addShape(bbox, passDecoration, nil, imageID)
+      viewer:addShape(bbox, passDecoration)
     else
-      viewer:addShape(bbox, failDecoration, nil, imageID)
+      viewer:addShape(bbox, failDecoration)
       textContent = 'Fail'
     end
     print(keyName .. ' score: ' .. tostring(math.floor(score * 100) / 100))
   end
 
-  viewer:addText(textContent, textDecoration, nil, imageID)
+  viewer:addText(textContent, textDecoration)
   viewer:present()
 end
 
@@ -147,10 +145,10 @@ local function main()
   -- Loading Teach image from resources and teaching
   local teachImage = Image.load('resources/Teach.bmp')
   viewer:clear()
-  local imageID = viewer:addImage(teachImage)
-  local matcherTeachPose = teachShape(teachImage, imageID)
+  viewer:addImage(teachImage)
+  local matcherTeachPose = teachShape(teachImage)
   -- Teaching patterns to verify
-  teachPatterns(matcherTeachPose, teachImage, imageID)
+  teachPatterns(matcherTeachPose, teachImage)
   Script.sleep(DELAY * 1.5)
 
   -- Loading images from resource folder and calling function for verification
